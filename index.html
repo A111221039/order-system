@@ -1,1 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>牛肉麵點餐系統（分類+客製化）</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #f7f7f7; margin: 0; padding: 10px; }
+    h1 { text-align: center; color: #333; font-size: 24px; margin-bottom: 20px; }
+    .container { display: flex; flex-direction: column; gap: 20px; max-width: 900px; margin: auto; }
+    .menu, .preview { background: white; border-radius: 10px; padding: 15px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+    .menu h2, .preview h2 { border-bottom: 2px solid #eee; padding-bottom: 8px; margin-bottom: 15px; color: #555; font-size: 20px; }
+    .menu h3 { color: #777; margin-top: 15px; margin-bottom: 8px; font-weight: 900; font-size: 18px; }
+    .item { display: flex; flex-direction: column; margin-bottom: 10px; background: #fafafa; padding: 8px; border-radius: 8px; }
+    .item span { font-size: 16px; }
+    .quantity-control { display: flex; align-items: center; gap: 5px; margin-top: 5px; }
+    .quantity-control button { background-color: #ddd; border: none; padding: 5px 10px; font-size: 18px; border-radius: 5px; cursor: pointer; }
+    .quantity-control input { width: 40px; text-align: center; font-size: 16px; border: 1px solid #ccc; border-radius: 5px; padding: 5px; }
+    button.submit-btn { width: 100%; padding: 15px; background-color: #ff6600; color: white; border: none; border-radius: 8px; font-size: 18px; cursor: pointer; margin-top: 20px; transition: background-color 0.3s; }
+    button.submit-btn:hover { background-color: #e65c00; }
+    .preview ul { list-style: none; padding: 0; }
+    .preview li { padding: 10px 0; border-bottom: 1px solid #eee; cursor: pointer; transition: background 0.2s; font-size: 16px; }
+    .preview li:hover { background: #ffe6e6; }
+    #totalPrice { margin-top: 20px; font-size: 18px; font-weight: bold; text-align: center; }
+    select { margin-top: 5px; padding: 5px; border-radius: 5px; border: 1px solid #ccc; font-size: 14px; }
+    @media (min-width: 768px) {
+      .container { flex-direction: row; }
+      .menu, .preview { flex: 1; }
+    }
+  </style>
+</head>
+<body>
+  <h1>簡單點</h1>
+  <div class="container">
+    <form class="menu" id="orderForm">
+      <h2>吃得飽家常牛肉麵</h2>
+      <p style="font-size: 14px;">(02)8931-3318 (每周一公休)</p>
+      <div id="menuItems"></div>
+      <button type="submit" class="submit-btn">送出訂單</button>
+    </form>
 
+    <div class="preview">
+      <h2>已選擇品項（點擊刪除）</h2>
+      <ul id="selectedItems"></ul>
+      <h3 id="totalPrice">總價：0 元</h3>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('orderForm');
+    const menuItemsDiv = document.getElementById('menuItems');
+    const selectedItems = document.getElementById('selectedItems');
+    const totalPrice = document.getElementById('totalPrice');
+
+    const menuData = {
+      "麵類": [
+        { name: "牛肉麵", price: 140 },
+        { name: "牛肉湯麵", price: 110 },
+        { name: "榨菜牛肉麵", price: 120 },
+        { name: "餛飩麵", price: 90 },
+        { name: "酸辣麵", price: 90 },
+        { name: "榨醬麵", price: 80 },
+        { name: "肉燥乾麵", price: 80 }
+      ],
+      "餃類": [
+        { name: "水餃（10顆）", price: 60 },
+        { name: "牛肉湯餃", price: 110 },
+        { name: "酸辣湯餃", price: 100 }
+      ],
+      "湯品": [
+        { name: "牛肉湯(6塊肉)", price: 90 },
+        { name: "酸辣湯", price: 90 },
+        { name: "餛飩湯", price: 90 },
+        { name: "牛肉清湯", price: 90 }
+      ],
+      "小菜": [
+        { name: "豬耳朵", price: 35 },
+        { name: "豬頭皮", price: 35 },
+        { name: "豬皮", price: 25 },
+        { name: "豬血糕", price: 20 },
+        { name: "花生", price: 35 },
+        { name: "花干", price: 25 },
+        { name: "大豆干", price: 20 },
+        { name: "白菜豆腐", price: 20 },
+        { name: "豆皮", price: 15 },
+        { name: "素雞", price: 15 },
+        { name: "海帶", price: 10 },
+        { name: "滷蛋", price: 10 },
+        { name: "甜不辣", price: 10 },
+        { name: "豆干", price: 5 },
+        { name: "涼菜", price: 35 }
+      ]
+    };
+
+    for (const category in menuData) {
+      const catTitle = document.createElement('h3');
+      catTitle.innerHTML = category;
+      
+      // 只有麵類加提示
+      if (category === "麵類") {
+        catTitle.innerHTML += ' <span style="font-size:12px;color:#999;">（大碗加10元）</span>';
+      }
+
+      menuItemsDiv.appendChild(catTitle);
+
+      menuData[category].forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'item';
+        div.innerHTML = `
+          <span>${item.name} - ${item.price}元</span>
+          <div class="quantity-control">
+            <button type="button" class="decrease">-</button>
+            <input type="number" min="0" value="0" data-name="${item.name}" data-price="${item.price}">
+            <button type="button" class="increase">+</button>
+          </div>
+          ${category === "麵類" ? `
+          <div>
+            <label>麵條粗細：</label>
+            <select>
+              <option value="細麵">細麵</option>
+              <option value="粗麵">粗麵</option>
+            </select>
+          </div>
+          <div>
+            <label>碗型：</label>
+            <select>
+              <option value="小碗">小碗</option>
+              <option value="大碗">大碗（+10元）</option>
+            </select>
+          </div>
+          <div>
+            <label>湯頭辣度：</label>
+            <select>
+              <option value="不辣">不辣</option>
+              <option value="微辣">微辣</option>
+              <option value="中辣">中辣</option>
+              <option value="大辣">大辣</option>
+            </select>
+          </div>` : ''}
+        `;
+        menuItemsDiv.appendChild(div);
+      });
+    }
+
+    function updateCart() {
+      selectedItems.innerHTML = '';
+      let total = 0;
+      const inputs = form.querySelectorAll('input[type="number"]');
+
+      inputs.forEach(input => {
+        const quantity = parseInt(input.value);
+        const name = input.dataset.name;
+        let price = parseInt(input.dataset.price);
+        const itemDiv = input.closest('.item');
+
+        if (quantity > 0) {
+          // 取得大碗選擇
+          const sizeSelect = itemDiv.querySelector('select:nth-of-type(2)');
+          if (sizeSelect && sizeSelect.value.includes('大碗')) {
+            price += 10;
+          }
+          
+          const li = document.createElement('li');
+          li.textContent = `${name} x ${quantity} = ${price * quantity} 元`;
+          li.dataset.name = name;
+          selectedItems.appendChild(li);
+
+          total += price * quantity;
+        }
+      });
+
+      totalPrice.textContent = `總價：${total} 元`;
+    }
+
+    menuItemsDiv.addEventListener('click', function(e) {
+      if (e.target.classList.contains('increase') || e.target.classList.contains('decrease')) {
+        const input = e.target.parentNode.querySelector('input');
+        let current = parseInt(input.value);
+
+        if (e.target.classList.contains('increase')) {
+          input.value = current + 1;
+        } else if (e.target.classList.contains('decrease') && current > 0) {
+          input.value = current - 1;
+        }
+
+        updateCart();
+      }
+    });
+
+    selectedItems.addEventListener('click', function(e) {
+      if (e.target.tagName === 'LI') {
+        const name = e.target.dataset.name;
+        const input = form.querySelector(`input[data-name="${name}"]`);
+        if (input) {
+          input.value = 0;
+        }
+        updateCart();
+      }
+    });
+
+    form.addEventListener('input', updateCart);
+
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      if (confirm('確定要送出訂單嗎？')) {
+        alert('訂單已送出，謝謝您的點餐！');
+        form.reset();
+        updateCart();
+      }
+    });
+  </script>
+</body>
+</html>
